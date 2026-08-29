@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>SMC Journal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0e1a;color:#f1f5f9;min-height:100vh}
+select,input,textarea{background:#111827;border:1px solid #1e2d45;border-radius:7px;color:#f1f5f9;padding:9px 12px;font-size:13px;width:100%;outline:none;font-family:inherit}
+button{cursor:pointer;font-family:inherit}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:#0a0e1a}
+::-webkit-scrollbar-thumb{background:#1e2d45;border-radius:3px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const C={bg:"#0a0e1a",surface:"#111827",card:"#1a2235",border:"#1e2d45",accent:"#3b82f6",accentL:"#60a5fa",green:"#10b981",red:"#ef4444",amber:"#f59e0b",text:"#f1f5f9",muted:"#64748b"};
+const PAIRS=["XAUUSD","USOIL","GBPUSD","EURUSD","USDJPY","GBPJPY","NASDAQ","US30","Custom"];
+const SESSIONS=["London Open","New York Open","New York Close","Asian Session","London Close"];
+const SETUPS=["Fair Value Gap","Order Block","Break of Structure","CHOCH","Liquidity Sweep","Breaker Block","Mitigation Block","OTE","Silver Bullet","Custom"];
+const EMOTIONS=["Confident","Patient","Anxious","Rushed","Revenge Trading","Neutral"];
+const SEED=[
+  {id:1,date:"2026-08-01",pair:"XAUUSD",session:"London Open",setup:"Fair Value Gap",direction:"Buy",entry:2410.5,sl:2405,tp:2421,lots:0.1,result:"Win",pips:105,rr:1.9,pnl:105,bias:"Bullish",killzone:true,confluences:3,emotion:"Confident",notes:"Clean FVG retest at London open."},
+  {id:2,date:"2026-08-04",pair:"XAUUSD",session:"New York Open",setup:"Order Block",direction:"Sell",entry:2435,sl:2440,tp:2420,lots:0.1,result:"Win",pips:150,rr:3.0,pnl:150,bias:"Bearish",killzone:true,confluences:4,emotion:"Patient",notes:"Bearish OB with liquidity sweep above."},
+  {id:3,date:"2026-08-05",pair:"USOIL",session:"New York Open",setup:"Break of Structure",direction:"Buy",entry:77.2,sl:76.8,tp:78,lots:0.5,result:"Loss",pips:-40,rr:-1.0,pnl:-40,bias:"Bullish",killzone:false,confluences:2,emotion:"Rushed",notes:"Entered before killzone. Lesson learned."},
+  {id:4,date:"2026-08-07",pair:"GBPUSD",session:"London Open",setup:"Liquidity Sweep",direction:"Buy",entry:1.275,sl:1.273,tp:1.28,lots:1,result:"Win",pips:50,rr:2.5,pnl:500,bias:"Bullish",killzone:true,confluences:3,emotion:"Confident",notes:"Swept buy side liquidity then reversed."},
+  {id:5,date:"2026-08-11",pair:"XAUUSD",session:"London Open",setup:"Fair Value Gap",direction:"Sell",entry:2450,sl:2455,tp:2435,lots:0.1,result:"Win",pips:150,rr:3.0,pnl:150,bias:"Bearish",killzone:true,confluences:4,emotion:"Patient",notes:"HTF FVG with confluence from daily OB."},
+  {id:6,date:"2026-08-13",pair:"XAUUSD",session:"New York Open",setup:"Order Block",direction:"Buy",entry:2438,sl:2433,tp:2453,lots:0.1,result:"Loss",pips:-50,rr:-1.0,pnl:-50,bias:"Bullish",killzone:true,confluences:2,emotion:"Anxious",notes:"Stopped out at the lows."},
+  {id:7,date:"2026-08-15",pair:"USOIL",session:"London Open",setup:"Breaker Block",direction:"Sell",entry:78.5,sl:79,tp:76.5,lots:0.5,result:"Win",pips:200,rr:4.0,pnl:200,bias:"Bearish",killzone:true,confluences:5,emotion:"Confident",notes:"Best trade of the month."},
+  {id:8,date:"2026-08-19",pair:"GBPUSD",session:"London Open",setup:"CHOCH",direction:"Sell",entry:1.282,sl:1.284,tp:1.276,lots:1,result:"Win",pips:60,rr:3.0,pnl:600,bias:"Bearish",killzone:true,confluences:3,emotion:"Patient",notes:"Clear CHOCH with bearish order flow."},
+];
+const pct=(n,d)=>d?((n/d)*100).toFixed(1)+"%":"0%";
+const fmt=n=>(n>=0?"+":"")+n.toFixed(0);
+const fmtR=n=>(n>=0?"+":"")+n.toFixed(2)+"R";
+const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+
+function StatCard({label,value,color}){
+  return React.createElement("div",{style:{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"16px 18px",minWidth:140}},
+    React.createElement("div",{style:{fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:6}},label),
+    React.createElement("div",{style:{fontSize:22,fontWeight:700,color:color||C.text,fontFamily:"monospace"}},value)
+  );
+}
+
+function Tag({children,color}){
+  const bg=color==="green"?C.green:color==="red"?C.red:color==="amber"?C.amber:C.accent;
+  return React.createElement("span",{style:{background:bg+"22",color:bg,border:`1px solid ${bg}44`,borderRadius:5,padding:"2px 8px",fontSize:11,fontWeight:600,whiteSpace:"nowrap"}},children);
+}
+
+function Dashboard({trades}){
+  const wins=trades.filter(t=>t.result==="Win");
+  const losses=trades.filter(t=>t.result==="Loss");
+  const totalPnl=trades.reduce((a,t)=>a+t.pnl,0);
+  const winRate=pct(wins.length,trades.length);
+  const avgRR=avg(wins.map(t=>t.rr));
+  const grossWin=wins.reduce((a,t)=>a+t.pnl,0);
+  const grossLoss=Math.abs(losses.reduce((a,t)=>a+t.pnl,0));
+  const pf=grossLoss?(grossWin/grossLoss).toFixed(2):"∞";
+  let running=0;
+  const equity=trades.map(t=>{running+=t.pnl;return{date:t.date,val:running};});
+  const maxEq=Math.max(...equity.map(e=>e.val),1);
+  const minEq=Math.min(...equity.map(e=>e.val),0);
+  const eqRange=maxEq-minEq||1;
+  const W=480,H=120,pad=10;
+  const pts=equity.map((e,i)=>{
+    const x=pad+(i/(equity.length-1||1))*(W-pad*2);
+    const y=H-pad-((e.val-minEq)/eqRange)*(H-pad*2);
+    return `${x},${y}`;
+  }).join(" ");
+  const bySetup={};
+  trades.forEach(t=>{if(!bySetup[t.setup])bySetup[t.setup]={wins:0,total:0};bySetup[t.setup].total++;if(t.result==="Win")bySetup[t.setup].wins++;});
+  const bySession={};
+  trades.forEach(t=>{if(!bySession[t.session])bySession[t.session]={wins:0,total:0,pnl:0};bySession[t.session].total++;bySession[t.session].pnl+=t.pnl;if(t.result==="Win")bySession[t.session].wins++;});
+
+  return React.createElement("div",null,
+    React.createElement("h2",{style:{color:C.text,marginBottom:20,fontWeight:700,fontSize:22}},"Dashboard"),
+    React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:12,marginBottom:28}},
+      React.createElement(StatCard,{label:"Total Trades",value:trades.length}),
+      React.createElement(StatCard,{label:"Win Rate",value:winRate,color:parseFloat(winRate)>=50?C.green:C.red}),
+      React.createElement(StatCard,{label:"Avg RR",value:avgRR.toFixed(2)+"R",color:C.accentL}),
+      React.createElement(StatCard,{label:"Total P&L",value:"£"+fmt(totalPnl),color:totalPnl>=0?C.green:C.red}),
+      React.createElement(StatCard,{label:"Profit Factor",value:pf,color:parseFloat(pf)>=1.5?C.green:C.amber}),
+      React.createElement(StatCard,{label:"Wins",value:wins.length,color:C.green}),
+      React.createElement(StatCard,{label:"Losses",value:losses.length,color:C.red}),
+    ),
+    React.createElement("div",{style:{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:20,marginBottom:20}},
+      React.createElement("div",{style:{fontSize:12,color:C.muted,marginBottom:12,textTransform:"uppercase",letterSpacing:1}},"Equity Curve"),
+      equity.length>1?React.createElement("svg",{width:"100%",viewBox:`0 0 ${W} ${H}`},
+        React.createElement("defs",null,React.createElement("linearGradient",{id:"eg",x1:"0",y1:"0",x2:"0",y2:"1"},React.createElement("stop",{offset:"0%",stopColor:C.accent,stopOpacity:"0.3"}),React.createElement("stop",{offset:"100%",stopColor:C.accent,stopOpacity:"0"}))),
+        React.createElement("polyline",{points:pts,fill:"none",stroke:C.accent,strokeWidth:"2",strokeLinejoin:"round"}),
+        React.createElement("polygon",{points:`${pad},${H-pad} ${pts} ${W-pad},${H-pad}`,fill:"url(#eg)"})
+      ):React.createElement("div",{style:{color:C.muted,textAlign:"center",padding:"20px 0",fontSize:13}},"Log more trades to see your equity curve"),
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginTop:8}},
+        React.createElement("span",{style:{fontSize:11,color:C.muted}},equity[0]?.date),
+        React.createElement("span",{style:{fontSize:12,fontWeight:700,color:totalPnl>=0?C.green:C.red}},"£"+fmt(totalPnl)),
+        React.createElement("span",{style:{fontSize:11,color:C.muted}},equity[equity.length-1]?.date)
+      )
+    ),
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
+      React.createElement("div",{style:{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:20}},
+        React.createElement("div",{style:{fontSize:12,color:C.muted,marginBottom:14,textTransform:"uppercase",letterSpacing:1}},"Win Rate by Setup"),
+        Object.entries(bySetup).map(([s,d])=>React.createElement("div",{key:s,style:{marginBottom:12}},
+          React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:4}},
+            React.createElement("span",{style:{fontSize:12,color:C.text}},s),
+            React.createElement("span",{style:{fontSize:12,color:C.accentL,fontFamily:"monospace"}},pct(d.wins,d.total))
+          ),
+          React.createElement("div",{style:{background:C.border,borderRadius:3,height:6,overflow:"hidden"}},
+            React.createElement("div",{style:{width:pct(d.wins,d.total),height:"100%",background:C.accent,borderRadius:3}})
+          )
+        ))
+      ),
+      React.createElement("div",{style:{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:20}},
+        React.createElement("div",{style:{fontSize:12,color:C.muted,marginBottom:14,textTransform:"uppercase",letterSpacing:1}},"P&L by Session"),
+        Object.entries(bySession).map(([s,d])=>React.createElement("div",{key:s,style:{marginBottom:12}},
+          React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:4}},
+            React.createElement("span",{style:{fontSize:12,color:C.text}},s),
+            React.createElement("span",{style:{fontSize:12,color:d.pnl>=0?C.green:C.red,fontFamily:"monospace"}},"£"+fmt(d.pnl))
+          ),
+          React.createElement("div",{style:{background:C.border,borderRadius:3,height:6,overflow:"hidden"}},
+            React.createElement("div",{style:{width:Math.min(100,Math.abs(d.pnl)/Math.max(...Object.values(bySession).map(x=>Math.abs(x.pnl)))*100)+"%",height:"100%",background:d.pnl>=0?C.green:C.red,borderRadius:3}})
+          )
+        ))
+      )
+    )
+  );
+}
+
+function LogTrade({onAdd}){
+  const empty={date:"",pair:"XAUUSD",session:"London Open",setup:"Fair Value Gap",direction:"Buy",entry:"",sl:"",tp:"",lots:"0.10",result:"Win",bias:"Bullish",killzone:true,confluences:3,emotion:"Confident",notes:""};
+  const [form,setForm]=React.useState(empty);
+  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const e=parseFloat(form.entry),sl=parseFloat(form.sl),tp=parseFloat(form.tp),lots=parseFloat(form.lots)||0.1;
+  let calcPips="—",calcRR="—",calcPnl="—";
+  if(e&&sl&&tp){
+    const isBuy=form.direction==="Buy";
+    const rawP=isBuy?tp-e:e-tp;
+    const slP=isBuy?e-sl:sl-e;
+    calcPips=(rawP*10000).toFixed(1);
+    calcRR=slP?(rawP/slP).toFixed(2):"—";
+    const pipVal=form.pair.includes("JPY")?lots*1000:lots*10;
+    calcPnl=(rawP*pipVal).toFixed(0);
+  }
+  const submit=()=>{
+    if(!form.date||!form.entry||!form.sl||!form.tp){alert("Fill in date, entry, SL and TP");return;}
+    onAdd({...form,entry:parseFloat(form.entry),sl:parseFloat(form.sl),tp:parseFloat(form.tp),lots:parseFloat(form.lots)||0.1,pips:parseFloat(calcPips)||0,rr:parseFloat(calcRR)||0,pnl:parseFloat(calcPnl)||0,confluences:parseInt(form.confluences)||1});
+    setForm(empty);
+    alert("Trade logged ✓");
+  };
+  const row={display:"grid",gridTemplateColumns:"1fr 1fr",gap:20};
+  const fld={marginBottom:14};
+  const lbl={fontSize:12,color:C.muted,marginBottom:5,display:"block"};
+  return React.createElement("div",null,
+    React.createElement("h2",{style:{color:C.text,marginBottom:20,fontWeight:700,fontSize:22}},"Log Trade"),
+    React.createElement("div",{style:{background:C.card,border:`1px solid ${C.accent}44`,borderRadius:10,padding:"14px 20px",marginBottom:24,display:"flex",gap:32}},
+      React.createElement("div",null,React.createElement("span",{style:{fontSize:11,color:C.muted}},"PIPS "),React.createElement("span",{style:{fontSize:20,fontWeight:700,color:C.accentL,fontFamily:"monospace"}},calcPips)),
+      React.createElement("div",null,React.createElement("span",{style:{fontSize:11,color:C.muted}},"R:R "),React.createElement("span",{style:{fontSize:20,fontWeight:700,color:parseFloat(calcRR)>=2?C.green:C.amber,fontFamily:"monospace"}},calcRR)),
+      React.createElement("div",null,React.createElement("span",{style:{fontSize:11,color:C.muted}},"P&L "),React.createElement("span",{style:{fontSize:20,fontWeight:700,color:parseFloat(calcPnl)>=0?C.green:C.red,fontFamily:"monospace"}},"£"+calcPnl))
+    ),
+    React.createElement("div",{style:row},
+      React.createElement("div",null,
+        React.createElement("div",{style:fld},React.createElement("label",{style:lbl},"Date & Time"),React.createElement("input",{type:"datetime-local",value:form.date,onChange:e=>set("date",e.target.value)})),
+        React.createElement("div",{style:fld},React.createElement("label",{style:lbl},"Pair"),React.createElement("select",{value:form.pair,onChange:e=>set("pair",e.target.value)},PAIRS.map(p=>React.createElement("option",{key:p},p)))),
+        React.createElement("div",{style:fld},React.createElement("label",{style:lbl},"Session"),React.createElement("select",{value:form.session,onChange:e=>set("session",e.target.value)},SESSIONS.map(s=>React.createElement("option",{key:s},s)))),
+        React.createElement("div",{style:fld},React.createElement("label",{style:lbl},"Setup"),React.createElement("select",{value:form.setup,onChange:e=>set("setup",e.target.value)},SETUPS.map(s=>React.createElement("option",{key:s},s)))),
+        React.createElement("div",{style:fld},React.createElement("label",{style:lbl},"Direction"),
+          React.createElement("div",{style:{display:"flex",gap:10}},
+            ["Buy","Sell"].map(d=>React.createElement("button",{key:d,onClick:()=>set("direction",d),style:{flex:1,padding:"9px 0",borderRadius:7,border:`1px solid ${form.direction===d?(d==="Buy"?C.green:C.red):C.border}`,background:form.direction===d?(d==="Buy"?C.green+"22":C.red+"22"):C.surface,color:form.direction===d?(d==="Buy"?C.green:C.red):C.muted,fontWeight:700,fontSize:13}},d==="Buy"?"▲ Buy":"▼ Sell"))
+          )
+        ),
+        React.createElement("div",{style:fld},React.createElement("label",{style:lbl},"Result"),
+          React.createElement("div",{style:{display:"flex",gap:8}},
+            ["Win","Loss","Breakeven"].map(r=>React.createElement("button",{key:r,onClick:()=>set("result",r),style:{flex:1,padding:"8px 0",borderRadius:7,border:`1px solid ${form.result===r?C.accent:C.border}`,background:form.result===r?C.accent+"22":C.surface,color:form.result===r?C.accent:C.muted,fontWeight:600,fontSize:12}},r))
+          )
+        )
+      ),
+      React.createElement("div",null,
+        React.createElement("div",{style:fld},React.createElement("label",{style:lbl},"Entry Price"),React.createElement("input",{type:"number",placeholder:"e.g. 2410.50",value:form.entry,onChange:e=>set("entry",e.target.value)})),
+        React.createElement("div",{style:fld},React.createElement("label",{style:lbl},"Stop Loss"),React.createElement("input",{type:"number",placeholder:"e.g. 2405.00",value:form.sl,onChange:e=>set("sl",e.target.value)})),
+        React.createElement("div",{style:fld},React.createElement("label",{style:lbl},"Take Profit"),React.createElement("input",{type:"number",placeholder:"e.g. 2421.00",value:form.tp,onChange:e=>set("tp",e.target.value)})),
+        React.createElement("div",{style:fld},React.createElement("label",{style:lbl},"Lot Size"),React.createElement("input",{type:"number",placeholder:"0.10",value:form.lots,onChange:e=>set("lots",e.target.value)})),
+        React.createElement("div",{style:fld},React.createElement("label",{style:lbl},"Daily Bias"),React.createElement("select",{value:form.bias,onChange:e=>set("bias",e.target.value)},["Bullish","Bearish","Neutral"].map(b=>React.createElement("option",{key:b},b)))),
+        React.createElement("div",{style:fld},React.createElement("label",{style:lbl},"Emotion"),React.createElement("select",{value:form.emotion,onChange:e=>set("emotion",e.target.value)},EMOTIONS.map(em=>React.createElement("option",{key:em},em)))),
+        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}},
+          React.createElement("div",{style:fld},React.createElement("label",{style:lbl},"Killzone?"),
+            React.createElement("div",{style:{display:"flex",gap:8}},
+              [true,false].map(v=>React.createElement("button",{key:String(v),onClick:()=>set("killzone",v),style:{flex:1,padding:"8px 0",borderRadius:7,border:`1px solid ${form.killzone===v?C.accent:C.border}`,background:form.killzone===v?C.accent+"22":C.surface,color:form.killzone===v?C.accent:C.muted,fontWeight:600,fontSize:12}},v?"Yes":"No"))
+            )
+          ),
+          React.createElement("div",{style:fld},React.createElement("label",{style:lbl},"Confluences"),React.createElement("input",{type:"number",min:"1",max:"5",value:form.confluences,onChange:e=>set("confluences",e.target.value)}))
+        )
+      )
+    ),
+    React.createElement("div",{style:fld},React.createElement("label",{style:lbl},"Notes"),React.createElement("textarea",{style:{resize:"vertical",height:80},placeholder:"What went well? What would you do differently?",value:form.notes,onChange:e=>set("notes",e.target.value)})),
+    React.createElement("button",{onClick:submit,style:{background:C.accent,color:"#fff",border:"none",borderRadius:8,padding:"13px 32px",fontSize:15,fontWeight:700,width:"100%",marginTop:4}},"Log Trade →")
+  );
+}
+
+function TradeLog({trades,onDelete}){
+  const [filter,setFilter]=React.useState({pair:"All",session:"All",result:"All"});
+  const [exp,setExp]=React.useState(null);
+  const filtered=trades.filter(t=>(filter.pair==="All"||t.pair===filter.pair)&&(filter.session==="All"||t.session===filter.session)&&(filter.result==="All"||t.result===filter.result));
+  const sel={background:C.surface,border:`1px solid ${C.border}`,borderRadius:6,color:C.text,padding:"7px 10px",fontSize:12};
+  return React.createElement("div",null,
+    React.createElement("h2",{style:{color:C.text,marginBottom:16,fontWeight:700,fontSize:22}},"Trade Log"),
+    React.createElement("div",{style:{display:"flex",gap:10,flexWrap:"wrap",marginBottom:18}},
+      React.createElement("select",{style:sel,value:filter.pair,onChange:e=>setFilter(f=>({...f,pair:e.target.value}))},["All",...PAIRS].map(o=>React.createElement("option",{key:o},o))),
+      React.createElement("select",{style:sel,value:filter.session,onChange:e=>setFilter(f=>({...f,session:e.target.value}))},["All",...SESSIONS].map(o=>React.createElement("option",{key:o},o))),
+      React.createElement("select",{style:sel,value:filter.result,onChange:e=>setFilter(f=>({...f,result:e.target.value}))},["All","Win","Loss","Breakeven"].map(o=>React.createElement("option",{key:o},o))),
+      React.createElement("div",{style:{marginLeft:"auto",fontSize:12,color:C.muted,alignSelf:"center"}},filtered.length+" trades")
+    ),
+    React.createElement("div",{style:{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,overflow:"hidden"}},
+      React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
+        React.createElement("thead",null,
+          React.createElement("tr",{style:{borderBottom:`1px solid ${C.border}`}},
+            ["Date","Pair","Session","Setup","Dir","Result","Pips","R:R","P&L",""].map(h=>React.createElement("th",{key:h,style:{padding:"12px 14px",color:C.muted,fontWeight:500,textAlign:"left",fontSize:11,textTransform:"uppercase"}},h))
+          )
+        ),
+        React.createElement("tbody",null,
+          filtered.length===0&&React.createElement("tr",null,React.createElement("td",{colSpan:10,style:{padding:32,textAlign:"center",color:C.muted}},"No trades")),
+          filtered.map(t=>React.createElement(React.Fragment,{key:t.id},
+            React.createElement("tr",{onClick:()=>setExp(exp===t.id?null:t.id),style:{borderBottom:`1px solid ${C.border}`,cursor:"pointer"}},
+              React.createElement("td",{style:{padding:"12px 14px",color:C.muted}},t.date?.slice(0,10)||"—"),
+              React.createElement("td",{style:{padding:"12px 14px",color:C.text,fontWeight:600}},t.pair),
+              React.createElement("td",{style:{padding:"12px 14px",color:C.muted}},t.session?.split(" ")[0]),
+              React.createElement("td",{style:{padding:"12px 14px",color:C.muted}},t.setup?.split(" ").slice(0,2).join(" ")),
+              React.createElement("td",{style:{padding:"12px 14px"}},React.createElement(Tag,{color:t.direction==="Buy"?"green":"red"},t.direction)),
+              React.createElement("td",{style:{padding:"12px 14px"}},React.createElement(Tag,{color:t.result==="Win"?"green":t.result==="Loss"?"red":"amber"},t.result)),
+              React.createElement("td",{style:{padding:"12px 14px",fontFamily:"monospace",color:t.pips>=0?C.green:C.red}},(t.pips>=0?"+":"")+t.pips),
+              React.createElement("td",{style:{padding:"12px 14px",fontFamily:"monospace",color:t.rr>=2?C.green:t.rr<0?C.red:C.amber}},fmtR(t.rr)),
+              React.createElement("td",{style:{padding:"12px 14px",fontFamily:"monospace",fontWeight:700,color:t.pnl>=0?C.green:C.red}},"£"+fmt(t.pnl)),
+              React.createElement("td",{style:{padding:"12px 14px"}},React.createElement("button",{onClick:e=>{e.stopPropagation();onDelete(t.id)},style:{background:"none",border:"none",color:C.muted,fontSize:16,padding:"2px 6px"}},"✕"))
+            ),
+            exp===t.id&&React.createElement("tr",{key:t.id+"e"},
+              React.createElement("td",{colSpan:10,style:{padding:"16px 20px",background:C.surface,borderBottom:`1px solid ${C.border}`}},
+                React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:8}},
+                  [["Bias",t.bias],["Emotion",t.emotion],["Killzone",t.killzone?"Yes":"No"],["Confluences",t.confluences],["Entry",t.entry],["SL",t.sl],["TP",t.tp],["Lots",t.lots]].map(([l,v])=>React.createElement("div",{key:l},React.createElement("span",{style:{fontSize:11,color:C.muted}},l+": "),React.createElement("span",{style:{fontSize:12,color:C.text,fontWeight:600}},v)))
+                ),
+                t.notes&&React.createElement("div",{style:{fontSize:13,color:C.muted,fontStyle:"italic",borderTop:`1px solid ${C.border}`,paddingTop:8}},'"'+t.notes+'"')
+              )
+            )
+          ))
+        )
+      )
+    )
+  );
+}
+
+function PropFirmMode(){
+  const [cfg,setCfg]=React.useState({accountSize:10000,maxDaily:5,maxTotal:10,profitTarget:10});
+  const [cur,setCur]=React.useState({dailyPnl:250,totalPnl:650,days:4});
+  const set=(k,v)=>setCfg(f=>({...f,[k]:v}));
+  const setC=(k,v)=>setCur(f=>({...f,[k]:v}));
+  const dailyPct=(Math.abs(cur.dailyPnl)/cfg.accountSize*100).toFixed(2);
+  const totalPct=(cur.totalPnl/cfg.accountSize*100).toFixed(2);
+  const progress=Math.min(100,(parseFloat(totalPct)/cfg.profitTarget)*100);
+  const dailyWarn=parseFloat(dailyPct)>=cfg.maxDaily*0.8;
+  const inp={background:C.surface,border:`1px solid ${C.border}`,borderRadius:7,color:C.text,padding:"8px 12px",fontSize:13,width:"100%"};
+  const lbl={fontSize:11,color:C.muted,display:"block",marginBottom:4};
+  return React.createElement("div",null,
+    React.createElement("h2",{style:{color:C.text,marginBottom:20,fontWeight:700,fontSize:22}},"Prop Firm Mode"),
+    dailyWarn&&React.createElement("div",{style:{background:C.red+"22",border:`1px solid ${C.red}`,borderRadius:8,padding:"12px 16px",marginBottom:14,color:C.red,fontWeight:600}},"⚠ Approaching daily drawdown limit — "+dailyPct+"% of "+cfg.maxDaily+"% used"),
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:24}},
+      React.createElement("div",{style:{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:20}},
+        React.createElement("div",{style:{fontSize:12,color:C.muted,marginBottom:14,textTransform:"uppercase",letterSpacing:1}},"Account Config"),
+        [["accountSize","Account Size (£)"],["maxDaily","Max Daily DD (%)"],["maxTotal","Max Total DD (%)"],["profitTarget","Profit Target (%)"]].map(([k,l])=>React.createElement("div",{key:k,style:{marginBottom:12}},React.createElement("label",{style:lbl},l),React.createElement("input",{type:"number",style:inp,value:cfg[k],onChange:e=>set(k,parseFloat(e.target.value)||0)})))
+      ),
+      React.createElement("div",{style:{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:20}},
+        React.createElement("div",{style:{fontSize:12,color:C.muted,marginBottom:14,textTransform:"uppercase",letterSpacing:1}},"Live Tracking"),
+        [["dailyPnl","Today's P&L (£)"],["totalPnl","Total P&L (£)"],["days","Days Traded"]].map(([k,l])=>React.createElement("div",{key:k,style:{marginBottom:12}},React.createElement("label",{style:lbl},l),React.createElement("input",{type:"number",style:inp,value:cur[k],onChange:e=>setC(k,parseFloat(e.target.value)||0)}))),
+        React.createElement("div",{style:{marginTop:16}},
+          React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:6}},
+            React.createElement("span",{style:{fontSize:12,color:C.muted}},"Profit Target Progress"),
+            React.createElement("span",{style:{fontSize:12,color:C.green,fontWeight:700}},parseFloat(totalPct)>=0?totalPct:"0"+"% / "+cfg.profitTarget+"%")
+          ),
+          React.createElement("div",{style:{background:C.border,borderRadius:6,height:10,overflow:"hidden"}},
+            React.createElement("div",{style:{width:progress+"%",height:"100%",background:C.green,borderRadius:6}})
+          )
+        ),
+        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginTop:16}},
+          [["Daily DD",dailyPct+"%",dailyWarn?C.red:C.green],["Total P&L","£"+cur.totalPnl,cur.totalPnl>=0?C.green:C.red],["Days",cur.days,C.accentL]].map(([l,v,co])=>React.createElement("div",{key:l,style:{background:C.surface,borderRadius:8,padding:12,textAlign:"center"}},React.createElement("div",{style:{fontSize:10,color:C.muted,marginBottom:4}},l),React.createElement("div",{style:{fontSize:17,fontWeight:700,color:co,fontFamily:"monospace"}},v)))
+        )
+      )
+    ),
+    React.createElement("div",{style:{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:20}},
+      React.createElement("div",{style:{fontSize:12,color:C.muted,marginBottom:14,textTransform:"uppercase",letterSpacing:1}},"Evaluation Phases"),
+      React.createElement("div",{style:{display:"flex",gap:12}},
+        ["Phase 1","Phase 2","Funded"].map((ph,i)=>React.createElement("div",{key:ph,style:{flex:1,background:i===0?C.accent+"22":C.surface,border:`1px solid ${i===0?C.accent:C.border}`,borderRadius:8,padding:"14px 16px",textAlign:"center"}},React.createElement("div",{style:{fontSize:11,color:i===0?C.accent:C.muted,marginBottom:6,fontWeight:600}},ph),React.createElement("div",{style:{fontSize:20,fontWeight:700,color:i===0?C.accent:C.muted}},i===0?"Active":i===2?"🎯":"—")))
+      )
+    )
+  );
+}
+
+function Statistics({trades}){
+  const monthly={};
+  trades.forEach(t=>{const m=(t.date||"").slice(0,7);if(!monthly[m])monthly[m]={trades:0,wins:0,pnl:0};monthly[m].trades++;monthly[m].pnl+=t.pnl;if(t.result==="Win")monthly[m].wins++;});
+  const byEmotion={};
+  trades.forEach(t=>{if(!byEmotion[t.emotion])byEmotion[t.emotion]={wins:0,total:0};byEmotion[t.emotion].total++;if(t.result==="Win")byEmotion[t.emotion].wins++;});
+  return React.createElement("div",null,
+    React.createElement("h2",{style:{color:C.text,marginBottom:20,fontWeight:700,fontSize:22}},"Statistics"),
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}},
+      React.createElement("div",{style:{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:20}},
+        React.createElement("div",{style:{fontSize:12,color:C.muted,marginBottom:14,textTransform:"uppercase",letterSpacing:1}},"Monthly P&L"),
+        React.createElement("table",{style:{width:"100%",fontSize:13,borderCollapse:"collapse"}},
+          React.createElement("thead",null,React.createElement("tr",{style:{borderBottom:`1px solid ${C.border}`}},["Month","Trades","W/R","P&L"].map(h=>React.createElement("th",{key:h,style:{padding:"6px 10px",color:C.muted,fontWeight:500,textAlign:"left",fontSize:11}},h)))),
+          React.createElement("tbody",null,Object.entries(monthly).sort().map(([m,d])=>React.createElement("tr",{key:m,style:{borderBottom:`1px solid ${C.border}44`}},
+            React.createElement("td",{style:{padding:"10px 10px",color:C.text}},m),
+            React.createElement("td",{style:{padding:"10px 10px",color:C.muted}},d.trades),
+            React.createElement("td",{style:{padding:"10px 10px",color:C.accentL}},pct(d.wins,d.trades)),
+            React.createElement("td",{style:{padding:"10px 10px",fontFamily:"monospace",fontWeight:700,color:d.pnl>=0?C.green:C.red}},"£"+fmt(d.pnl))
+          )))
+        )
+      ),
+      React.createElement("div",{style:{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:20}},
+        React.createElement("div",{style:{fontSize:12,color:C.muted,marginBottom:14,textTransform:"uppercase",letterSpacing:1}},"Emotion vs Win Rate"),
+        Object.entries(byEmotion).map(([em,d])=>React.createElement("div",{key:em,style:{marginBottom:12}},
+          React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:4}},
+            React.createElement("span",{style:{fontSize:12,color:C.text}},em),
+            React.createElement("span",{style:{fontSize:12,color:parseFloat(pct(d.wins,d.total))>=50?C.green:C.red,fontFamily:"monospace"}},pct(d.wins,d.total)+" ("+d.total+")")
+          ),
+          React.createElement("div",{style:{background:C.border,borderRadius:3,height:6,overflow:"hidden"}},
+            React.createElement("div",{style:{width:pct(d.wins,d.total),height:"100%",background:parseFloat(pct(d.wins,d.total))>=50?C.green:C.red,borderRadius:3}})
+          )
+        ))
+      )
+    ),
+    React.createElement("div",{style:{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:20}},
+      React.createElement("div",{style:{fontSize:12,color:C.muted,marginBottom:14,textTransform:"uppercase",letterSpacing:1}},"Performance Summary"),
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16}},
+        [
+          ["Best Trade","£"+Math.max(...trades.map(t=>t.pnl),0).toFixed(0),C.green],
+          ["Worst Trade","£"+Math.min(...trades.map(t=>t.pnl),0).toFixed(0),C.red],
+          ["Avg Win","£"+avg(trades.filter(t=>t.result==="Win").map(t=>t.pnl)).toFixed(0),C.green],
+          ["Avg Loss","£"+avg(trades.filter(t=>t.result==="Loss").map(t=>t.pnl)).toFixed(0),C.red],
+          ["Killzone WR",pct(trades.filter(t=>t.killzone&&t.result==="Win").length,trades.filter(t=>t.killzone).length),C.amber],
+          ["Non-KZ WR",pct(trades.filter(t=>!t.killzone&&t.result==="Win").length,trades.filter(t=>!t.killzone).length),C.amber],
+          ["Total Wins",trades.filter(t=>t.result==="Win").length,C.green],
+          ["Total Losses",trades.filter(t=>t.result==="Loss").length,C.red],
+        ].map(([l,v,co])=>React.createElement("div",{key:l,style:{background:C.surface,borderRadius:8,padding:"14px 16px"}},
+          React.createElement("div",{style:{fontSize:10,color:C.muted,marginBottom:4,textTransform:"uppercase"}},l),
+          React.createElement("div",{style:{fontSize:18,fontWeight:700,color:co,fontFamily:"monospace"}},v)
+        ))
+      )
+    )
+  );
+}
+
+function App(){
+  const [page,setPage]=React.useState("dashboard");
+  const [trades,setTrades]=React.useState(SEED);
+  const addTrade=t=>setTrades(ts=>[...ts,{...t,id:Date.now()}]);
+  const delTrade=id=>setTrades(ts=>ts.filter(t=>t.id!==id));
+  const totalPnl=trades.reduce((a,t)=>a+t.pnl,0);
+  const winRate=trades.length?((trades.filter(t=>t.result==="Win").length/trades.length)*100).toFixed(0):0;
+  const nav=[{id:"dashboard",icon:"📊",label:"Dashboard"},{id:"log",icon:"✏️",label:"Log Trade"},{id:"tradelog",icon:"📋",label:"Trade Log"},{id:"propfirm",icon:"🏦",label:"Prop Firm"},{id:"stats",icon:"📈",label:"Statistics"}];
+  return React.createElement("div",{style:{display:"flex",minHeight:"100vh",background:C.bg}},
+    React.createElement("div",{style:{width:220,background:C.surface,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",padding:"24px 0",flexShrink:0}},
+      React.createElement("div",{style:{padding:"0 20px 24px",borderBottom:`1px solid ${C.border}`,marginBottom:8}},
+        React.createElement("div",{style:{fontSize:18,fontWeight:800,color:C.accent,letterSpacing:-0.5}},"SMC Journal"),
+        React.createElement("div",{style:{fontSize:11,color:C.muted,marginTop:2}},"Smart Money Concepts")
+      ),
+      React.createElement("div",{style:{padding:"12px 20px",marginBottom:8}},
+        React.createElement("div",{style:{display:"flex",justifyContent:"space-between"}},
+          React.createElement("div",null,React.createElement("div",{style:{fontSize:10,color:C.muted}},"TOTAL P&L"),React.createElement("div",{style:{fontSize:15,fontWeight:700,color:totalPnl>=0?C.green:C.red,fontFamily:"monospace"}},"£"+fmt(totalPnl))),
+          React.createElement("div",{style:{textAlign:"right"}},React.createElement("div",{style:{fontSize:10,color:C.muted}},"WIN RATE"),React.createElement("div",{style:{fontSize:15,fontWeight:700,color:winRate>=50?C.green:C.red}},winRate+"%"))
+        )
+      ),
+      React.createElement("nav",{style:{flex:1,padding:"0 10px"}},
+        nav.map(n=>React.createElement("button",{key:n.id,onClick:()=>setPage(n.id),style:{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"11px 12px",borderRadius:8,border:"none",background:page===n.id?C.accent+"22":"transparent",color:page===n.id?C.accent:C.muted,fontSize:13,fontWeight:page===n.id?600:400,cursor:"pointer",marginBottom:2,textAlign:"left"}},React.createElement("span",{style:{fontSize:16}},n.icon),n.label))
+      ),
+      React.createElement("div",{style:{padding:"16px 20px",borderTop:`1px solid ${C.border}`,fontSize:11,color:C.muted}},trades.length+" trades logged")
+    ),
+    React.createElement("div",{style:{flex:1,padding:"32px 36px",overflowY:"auto",maxHeight:"100vh"}},
+      page==="dashboard"&&React.createElement(Dashboard,{trades}),
+      page==="log"&&React.createElement(LogTrade,{onAdd:addTrade}),
+      page==="tradelog"&&React.createElement(TradeLog,{trades,onDelete:delTrade}),
+      page==="propfirm"&&React.createElement(PropFirmMode,null),
+      page==="stats"&&React.createElement(Statistics,{trades})
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>
